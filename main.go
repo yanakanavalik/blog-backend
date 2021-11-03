@@ -11,6 +11,7 @@ func main() {
 	startDatastore()
 
 	http.HandleFunc("/", handleUrl)
+
 	appengine.Main()
 }
 
