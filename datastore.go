@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"cloud.google.com/go/datastore"
@@ -27,14 +28,24 @@ func startDatastore() {
 	}
 }
 
-func handleArticlesRequest(w http.ResponseWriter) {
+func handleArticlesRequest(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
+	articlesStartNum, err := strconv.Atoi(r.URL.Query().Get("start"))
+	if err != nil {
+		articlesStartNum = 0
+	}
+
+	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
+	if err != nil {
+		limit = 10
+	}
+
 	// Get a list of the most recent visits.
-	visits, err := queryVisits(ctx, 10)
+	visits, err := queryVisits(ctx, limit, articlesStartNum)
 	if err != nil {
 		msg := fmt.Sprintf("Could not get recent visits: %v", err)
 		http.Error(w, msg, http.StatusInternalServerError)
@@ -105,11 +116,12 @@ func recordVisit(ctx context.Context, now time.Time) error {
 	return err
 }
 
-func queryVisits(ctx context.Context, limit int64) ([]*Visit, error) {
+func queryVisits(ctx context.Context, limit int, start int) ([]*Visit, error) {
 	// Print out previous visits.
 	q := datastore.NewQuery("Article").
 		Order("-DateCreated").
-		Limit(100)
+		Limit(limit).
+		Offset(start)
 
 	visits := make([]*Visit, 0)
 	_, err := datastoreClient.GetAll(ctx, q, &visits)
