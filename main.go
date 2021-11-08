@@ -11,12 +11,13 @@ func main() {
 	startDatastore()
 
 	http.HandleFunc("/", handleUrl)
+
 	appengine.Main()
 }
 
 func handleUrl(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/Articles" {
-		handleArticlesRequest(w)
+		handleArticlesRequest(w, r)
 		return
 	}
 

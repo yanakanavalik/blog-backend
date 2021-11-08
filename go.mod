@@ -1,11 +1,10 @@
-module github.com/GoogleCloudPlatform/golang-samples
+module main
 
 go 1.17
 
-require cloud.google.com/go/datastore v1.6.0
-
 require (
 	cloud.google.com/go v0.97.0 // indirect
+	cloud.google.com/go/datastore v1.6.0 // indirect
 	cloud.google.com/go/storage v1.18.2 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2 // indirect

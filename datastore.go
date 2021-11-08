@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"cloud.google.com/go/datastore"
@@ -26,11 +28,24 @@ func startDatastore() {
 	}
 }
 
-func handleArticlesRequest(w http.ResponseWriter) {
+func handleArticlesRequest(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	articlesStartNum, err := strconv.Atoi(r.URL.Query().Get("start"))
+	if err != nil {
+		articlesStartNum = 0
+	}
+
+	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
+	if err != nil {
+		limit = 10
+	}
+
 	// Get a list of the most recent visits.
-	visits, err := queryVisits(ctx, 10)
+	visits, err := queryVisits(ctx, limit, articlesStartNum)
 	if err != nil {
 		msg := fmt.Sprintf("Could not get recent visits: %v", err)
 		http.Error(w, msg, http.StatusInternalServerError)
@@ -44,26 +59,55 @@ func handleArticlesRequest(w http.ResponseWriter) {
 		return
 	}
 
-	fmt.Fprintln(w, "Articles:")
-	for _, v := range visits {
-		fmt.Fprintf(w, "[%s] \n", v.Title)
-		fmt.Fprintf(w, "%v", v.Paragraph)
+	v := &ResponseVisit{
+		VisitsArray: visits,
+		Count:       len(visits),
 	}
-	fmt.Fprintln(w, "\nSuccessfully stored an entry of the current request.")
+
+	body, err := json.Marshal(v)
+	if err != nil {
+		msg := fmt.Sprintf("Could not get recent visits: %v", err)
+		http.Error(w, msg, http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintf(w, "[%s]", body)
 }
 
-type visit struct {
-	Timestamp time.Time
-	Title     string
-	Paragraph []string
-	UserIP    string
+type ResponseVisit struct {
+	VisitsArray []*Visit
+	Count       int
+}
+
+type Visit struct {
+	DateCreated time.Time
+	Title       string
+	Paragraphs  []*Paragraph
+}
+
+type Paragraph struct {
+	Title string
+	Text  []string
 }
 
 func recordVisit(ctx context.Context, now time.Time) error {
-	v := &visit{
-		Title:     "First Article",
-		Timestamp: time.Now(),
-		Paragraph: []string{"First Paragrahla lalal alala", "Second Paragrahla lalal alala", "Third Paragrahla lalal alala", "Fourth Paragrahla lalal alala"},
+	v := &Visit{
+		Title:       "Welcome!",
+		DateCreated: time.Now(),
+		Paragraphs: []*Paragraph{
+			{
+				Title: "",
+				Text:  []string{"Welcome to my blog. Nice to meet you", "bla"},
+			},
+			{
+				Title: "Subtitle 1",
+				Text:  []string{"Lallalalala 1"},
+			},
+			{
+				Title: "Subtitle 2",
+				Text:  []string{"A:A:A::A:"},
+			},
+		},
 	}
 
 	k := datastore.IncompleteKey("Article", nil)
@@ -72,13 +116,14 @@ func recordVisit(ctx context.Context, now time.Time) error {
 	return err
 }
 
-func queryVisits(ctx context.Context, limit int64) ([]*visit, error) {
+func queryVisits(ctx context.Context, limit int, start int) ([]*Visit, error) {
 	// Print out previous visits.
 	q := datastore.NewQuery("Article").
-		Order("-Timestamp").
-		Limit(100)
+		Order("-DateCreated").
+		Limit(limit).
+		Offset(start)
 
-	visits := make([]*visit, 0)
+	visits := make([]*Visit, 0)
 	_, err := datastoreClient.GetAll(ctx, q, &visits)
 	return visits, err
 }
