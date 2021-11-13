@@ -28,45 +28,57 @@ func startDatastore() {
 	}
 }
 
-func handleArticlesRequest(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
-
+func handleCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+}
 
-	articlesStartNum, err := strconv.Atoi(r.URL.Query().Get("start"))
+func executeIntParams(r *http.Request, paramName string, defaultValue int) int {
+	param, err := strconv.Atoi(r.URL.Query().Get(paramName))
 	if err != nil {
-		articlesStartNum = 0
+		param = defaultValue
 	}
 
-	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
-	if err != nil {
-		limit = 10
-	}
+	return param
+}
 
-	// Get a list of the most recent visits.
-	visits, err := queryVisits(ctx, limit, articlesStartNum)
+func handleArticlesSummariesRequest(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+
+	handleCORS(w)
+
+	articlesStartNum := executeIntParams(r, "start", 0)
+	limit := executeIntParams(r, "limit", 10)
+
+	dateCreated := time.Now()
+
+	articleSummaries, err := queryArticlesSummaries(ctx, limit, articlesStartNum)
 	if err != nil {
-		msg := fmt.Sprintf("Could not get recent visits: %v", err)
+		msg := fmt.Sprintf("Could not get article summaries: %v", err)
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
 
-	// Record this visit.
-	if err := recordVisit(ctx, time.Now()); err != nil {
-		msg := fmt.Sprintf("Could not save visit: %v", err)
+	if err := recordArticle(ctx, dateCreated); err != nil {
+		msg := fmt.Sprintf("Could not record article: %v", err)
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
 
-	v := &ResponseVisit{
-		VisitsArray: visits,
-		Count:       len(visits),
+	if err := recordArticleSummary(ctx, dateCreated); err != nil {
+		msg := fmt.Sprintf("Could not record article summary: %v", err)
+		http.Error(w, msg, http.StatusInternalServerError)
+		return
+	}
+
+	v := &ResponseArticleSummary{
+		ArticlesSummaries: articleSummaries,
+		Count:             len(articleSummaries),
 	}
 
 	body, err := json.Marshal(v)
 	if err != nil {
-		msg := fmt.Sprintf("Could not get recent visits: %v", err)
+		msg := fmt.Sprintf("Could not json articles summaries: %v", err)
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
@@ -74,26 +86,11 @@ func handleArticlesRequest(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "[%s]", body)
 }
 
-type ResponseVisit struct {
-	VisitsArray []*Visit
-	Count       int
-}
-
-type Visit struct {
-	DateCreated time.Time
-	Title       string
-	Paragraphs  []*Paragraph
-}
-
-type Paragraph struct {
-	Title string
-	Text  []string
-}
-
-func recordVisit(ctx context.Context, now time.Time) error {
-	v := &Visit{
-		Title:       "Welcome!",
-		DateCreated: time.Now(),
+func recordArticle(ctx context.Context, now time.Time) error {
+	v := &Article{
+		Title:       "Article",
+		DateCreated: now,
+		UrlName:     fmt.Sprintf("article-summary-%s", now.Format("01-02-2006")),
 		Paragraphs: []*Paragraph{
 			{
 				Title: "",
@@ -116,14 +113,38 @@ func recordVisit(ctx context.Context, now time.Time) error {
 	return err
 }
 
-func queryVisits(ctx context.Context, limit int, start int) ([]*Visit, error) {
-	// Print out previous visits.
+func recordArticleSummary(ctx context.Context, now time.Time) error {
+	v := &ArticleSummary{
+		Title:       "Article summary!",
+		DateCreated: now,
+		Summary:     "Article summary. Summary. Summary.",
+		UrlName:     fmt.Sprintf("article-summary-%s", now.Format("01-02-2006")),
+	}
+
+	k := datastore.IncompleteKey("ArticleSummary", nil)
+
+	_, err := datastoreClient.Put(ctx, k, v)
+	return err
+}
+
+func queryArticles(ctx context.Context, limit int, start int) ([]*Article, error) {
 	q := datastore.NewQuery("Article").
 		Order("-DateCreated").
 		Limit(limit).
 		Offset(start)
 
-	visits := make([]*Visit, 0)
-	_, err := datastoreClient.GetAll(ctx, q, &visits)
-	return visits, err
+	articles := make([]*Article, 0)
+	_, err := datastoreClient.GetAll(ctx, q, &articles)
+	return articles, err
+}
+
+func queryArticlesSummaries(ctx context.Context, limit int, start int) ([]*ArticleSummary, error) {
+	q := datastore.NewQuery("ArticleSummary").
+		Order("-DateCreated").
+		Limit(limit).
+		Offset(start)
+
+	articlesSummaries := make([]*ArticleSummary, 0)
+	_, err := datastoreClient.GetAll(ctx, q, &articlesSummaries)
+	return articlesSummaries, err
 }
