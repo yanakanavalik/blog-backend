@@ -5,6 +5,7 @@ import "time"
 type ResponseArticleSummary struct {
 	ArticlesSummaries []*ArticleSummary
 	Count             int
+	StartIndex        int
 }
 
 type ArticleSummary struct {

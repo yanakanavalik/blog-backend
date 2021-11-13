@@ -50,8 +50,6 @@ func handleArticlesSummariesRequest(w http.ResponseWriter, r *http.Request) {
 	articlesStartNum := executeIntParams(r, "start", 0)
 	limit := executeIntParams(r, "limit", 10)
 
-	dateCreated := time.Now()
-
 	articleSummaries, err := queryArticlesSummaries(ctx, limit, articlesStartNum)
 	if err != nil {
 		msg := fmt.Sprintf("Could not get article summaries: %v", err)
@@ -59,21 +57,12 @@ func handleArticlesSummariesRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := recordArticle(ctx, dateCreated); err != nil {
-		msg := fmt.Sprintf("Could not record article: %v", err)
-		http.Error(w, msg, http.StatusInternalServerError)
-		return
-	}
-
-	if err := recordArticleSummary(ctx, dateCreated); err != nil {
-		msg := fmt.Sprintf("Could not record article summary: %v", err)
-		http.Error(w, msg, http.StatusInternalServerError)
-		return
-	}
+	recordArticleToDataStore(ctx, w)
 
 	v := &ResponseArticleSummary{
 		ArticlesSummaries: articleSummaries,
 		Count:             len(articleSummaries),
+		StartIndex:        articlesStartNum,
 	}
 
 	body, err := json.Marshal(v)
@@ -86,11 +75,29 @@ func handleArticlesSummariesRequest(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "[%s]", body)
 }
 
-func recordArticle(ctx context.Context, now time.Time) error {
+func recordArticleToDataStore(ctx context.Context, w http.ResponseWriter) {
+	title := "New Article!"
+	dateCreated := time.Now()
+	urlName := fmt.Sprintf("article-summary-%s", dateCreated.Format("01-02-2006"))
+
+	if err := recordArticle(ctx, dateCreated, urlName, title); err != nil {
+		msg := fmt.Sprintf("Could not record article: %v", err)
+		http.Error(w, msg, http.StatusInternalServerError)
+		return
+	}
+
+	if err := recordArticleSummary(ctx, dateCreated, urlName, title); err != nil {
+		msg := fmt.Sprintf("Could not record article summary: %v", err)
+		http.Error(w, msg, http.StatusInternalServerError)
+		return
+	}
+}
+
+func recordArticle(ctx context.Context, now time.Time, urlName string, title string) error {
 	v := &Article{
-		Title:       "Article",
+		Title:       title,
 		DateCreated: now,
-		UrlName:     fmt.Sprintf("article-summary-%s", now.Format("01-02-2006")),
+		UrlName:     urlName,
 		Paragraphs: []*Paragraph{
 			{
 				Title: "",
@@ -113,12 +120,12 @@ func recordArticle(ctx context.Context, now time.Time) error {
 	return err
 }
 
-func recordArticleSummary(ctx context.Context, now time.Time) error {
+func recordArticleSummary(ctx context.Context, now time.Time, urlName string, title string) error {
 	v := &ArticleSummary{
-		Title:       "Article summary!",
+		Title:       title,
 		DateCreated: now,
 		Summary:     "Article summary. Summary. Summary.",
-		UrlName:     fmt.Sprintf("article-summary-%s", now.Format("01-02-2006")),
+		UrlName:     urlName,
 	}
 
 	k := datastore.IncompleteKey("ArticleSummary", nil)

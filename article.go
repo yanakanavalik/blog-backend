@@ -3,8 +3,9 @@ package main
 import "time"
 
 type ResponseArticle struct {
-	Articles []*Article
-	Count    int
+	Articles   []*Article
+	Count      int
+	StartIndex int
 }
 
 type Article struct {
