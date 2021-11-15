@@ -1,11 +1,11 @@
-package main
+package datstore
 
 import "time"
 
 type ResponseArticleSummary struct {
 	ArticlesSummaries []*ArticleSummary
-	Count             int
-	StartIndex        int
+	Offset            int
+	TotalCount        int
 }
 
 type ArticleSummary struct {

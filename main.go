@@ -21,8 +21,13 @@ func handleUrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.URL.Path == "/add-article" {
+		recordArticleToDataStore(w)
+		return
+	}
+
 	if r.URL.Path == "/" {
-		fmt.Fprintf(w, "Welcome. Please, use existing routes: \n/articles-summaries")
+		fmt.Fprintf(w, "Welcome. Please, use existing routes: \n/articles-summaries -> get existing articles summaries \n /add-article -> add new article (default)")
 		return
 	}
 

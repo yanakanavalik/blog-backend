@@ -1,4 +1,4 @@
-package main
+package datstore
 
 import (
 	"context"
@@ -30,7 +30,7 @@ func startDatastore() {
 
 func handleCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Headers", "Access-Control-Allow-Origin, Accept, Content-Type")
 }
 
 func executeIntParams(r *http.Request, paramName string, defaultValue int) int {
@@ -57,12 +57,12 @@ func handleArticlesSummariesRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	recordArticleToDataStore(ctx, w)
+	totalArticlesSummariesCount, err := getArticlesCount(ctx)
 
 	v := &ResponseArticleSummary{
 		ArticlesSummaries: articleSummaries,
-		Count:             len(articleSummaries),
-		StartIndex:        articlesStartNum,
+		Offset:            articlesStartNum,
+		TotalCount:        totalArticlesSummariesCount,
 	}
 
 	body, err := json.Marshal(v)
@@ -75,7 +75,9 @@ func handleArticlesSummariesRequest(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "[%s]", body)
 }
 
-func recordArticleToDataStore(ctx context.Context, w http.ResponseWriter) {
+func recordArticleToDataStore(w http.ResponseWriter) {
+	ctx := context.Background()
+
 	title := "New Article!"
 	dateCreated := time.Now()
 	urlName := fmt.Sprintf("article-summary-%s", dateCreated.Format("01-02-2006"))
@@ -154,4 +156,12 @@ func queryArticlesSummaries(ctx context.Context, limit int, start int) ([]*Artic
 	articlesSummaries := make([]*ArticleSummary, 0)
 	_, err := datastoreClient.GetAll(ctx, q, &articlesSummaries)
 	return articlesSummaries, err
+}
+
+func getArticlesCount(ctx context.Context) (int, error) {
+	q := datastore.NewQuery("ArticleSummary")
+
+	articlesSummaries := make([]*ArticleSummary, 0)
+	_, err := datastoreClient.GetAll(ctx, q, &articlesSummaries)
+	return len(articlesSummaries), err
 }
