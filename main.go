@@ -16,13 +16,18 @@ func main() {
 }
 
 func handleUrl(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/Articles" {
-		handleArticlesRequest(w, r)
+	if r.URL.Path == "/articles-summaries" {
+		handleArticlesSummariesRequest(w, r)
+		return
+	}
+
+	if r.URL.Path == "/add-article" {
+		recordArticleToDataStore(w)
 		return
 	}
 
 	if r.URL.Path == "/" {
-		fmt.Fprintf(w, "Welcome. Please, use existing routes: \n/Articles")
+		fmt.Fprintf(w, "Welcome. Please, use existing routes: \n/articles-summaries -> get existing articles summaries \n /add-article -> add new article (default)")
 		return
 	}
 
