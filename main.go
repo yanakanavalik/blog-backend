@@ -21,6 +21,11 @@ func handleUrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.URL.Path == "/article" {
+		handleArticleByIdRequest(w, r)
+		return
+	}
+
 	if r.URL.Path == "/add-article" {
 		recordArticleToDataStore(w)
 		return
