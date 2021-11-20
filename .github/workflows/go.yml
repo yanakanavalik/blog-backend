@@ -26,4 +26,4 @@ jobs:
         export_default_credentials: true
         
     - name: Deploy
-      run: gcloud app deploy --project=valencia-329402 --quiet
+      run: go get cloud.google.com/go/datastore && gcloud app deploy --project=valencia-329402 --quiet
