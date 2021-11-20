@@ -1,9 +1,4 @@
 steps:
-- uses: actions/checkout@v2.3.4
-- uses: actions/setup-go@v2
-  with:
-    go-version: '1.17'
-- run: go get cloud.google.com/go/datastore
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: 'bash'
   args: ['-c', 'gcloud config set app/cloud_build_timeout 1600 && gcloud app deploy']

@@ -26,9 +26,7 @@ jobs:
         export_default_credentials: true
 
     - name: Download datastore
-      run: go get .
-      with:
-        path: /home/runner/go/src/
+      run: cd ~/home/runner/go/src/ && go get .
         
     - name: Deploy
       run: gcloud app deploy --project=valencia-329402 --quiet
