@@ -24,6 +24,11 @@ jobs:
         service_account_email: ${{ secrets.GCP_EMAIL }}
         service_account_key: ${{ secrets.GCP_CREDENTIALS }}
         export_default_credentials: true
+
+    - name: Download datastore
+      run: go get .
+      with:
+        path: /home/runner/go/src/
         
     - name: Deploy
-      run: go mod tidy && gcloud app deploy --project=valencia-329402 --quiet
+      run: gcloud app deploy --project=valencia-329402 --quiet
